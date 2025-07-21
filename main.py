@@ -5,10 +5,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
 
-# DB 설정
-DATABASE_URL = "sqlite:///./users.db"
+# MySQL DB 설정 (예시)
+DATABASE_URL = "mysql+pymysql://user:password@localhost:3306/mydatabase"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_URL, echo=True)  # connect_args 제거
 Base = declarative_base()
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
@@ -20,8 +20,8 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    password = Column(String)
+    username = Column(String(50), unique=True, index=True, nullable=False)  # 길이 지정
+    password = Column(String(255), nullable=False)
 
 # 테이블 생성
 Base.metadata.create_all(bind=engine)
