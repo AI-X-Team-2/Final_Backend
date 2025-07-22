@@ -4,9 +4,13 @@ from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from passlib.context import CryptContext
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # MySQL DB 설정 (예시)
-DATABASE_URL = "mysql+pymysql://user:password@localhost:3306/mydatabase"
+DATABASE_URL = os.getenv("mySPL_URL")
 
 engine = create_engine(DATABASE_URL, echo=True)  # connect_args 제거
 Base = declarative_base()
