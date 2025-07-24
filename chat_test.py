@@ -1,11 +1,35 @@
-from openai import OpenAI
+# Requirements:
+# pip install fastapi uvicorn langchain openai python-dotenv pydantic pydantic-core tiktoken regex
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate
+)
+from langchain.memory import ConversationSummaryBufferMemory
+from langchain.chains import ConversationChain
 
-prompt_msg = """
+# Load environment variables
+load_dotenv()
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise HTTPException(status_code=500, detail="OPENAI_API_KEY not set in environment")
+
+# Initialize the LLM with LangChain
+llm = ChatOpenAI(
+    model_name="gpt-4o-mini",
+    openai_api_key=openai_api_key,
+    temperature=0.7
+)
+
+# System prompt with static guidelines
+system_prompt = """
 You are a text-based conversation practice chatbot for individuals with hearing impairments. Help the user practice everyday dialogues by following these guidelines:
 1. Keep all dialogue clear and concise. (No long sentences.)
 2. Example scenarios include ordering at a cafe, greeting a friend, making a doctor’s appointment, attending a job interview, expressing emotions, etc.
@@ -19,31 +43,52 @@ You are a text-based conversation practice chatbot for individuals with hearing 
 10. Display those four example scenarios in a random order each time.
 """
 
-message = [{'role':'system', 'content': prompt_msg}]
+# Build the prompt template
+chat_prompt = ChatPromptTemplate.from_messages([
+    SystemMessagePromptTemplate.from_template(system_prompt),
+    SystemMessagePromptTemplate.from_template("대화 요약: {chat_history}"),
+    HumanMessagePromptTemplate.from_template("{input}")
+])
 
-# GPT가 먼저 말을 꺼내도록 API 호출
-response = client.chat.completions.create(
-    model='gpt-4o-mini',
-    messages=message  # 빈 메시지 → GPT가 첫 메시지 생성
-    
+# Set up summary buffer memory
+memory = ConversationSummaryBufferMemory(
+    llm=llm,
+    memory_key="chat_history",
+    input_key="input",
+    output_key="response"
 )
 
-chat_response = response.choices[0].message.content
-print(f'ChatGPT : {chat_response}')
-message.append({'role': 'assistant', 'content': chat_response})
+# Create the conversational chain
+conversation = ConversationChain(
+    llm=llm,
+    prompt=chat_prompt,
+    memory=memory,
+    verbose=False
+)
 
-while True:
-    content = input('사용자 : ')
-    if content == '종료':
-        break
+# FastAPI app setup
+app = FastAPI(title="유음 대화 연습 챗봇 API")
 
-    message.append({'role': 'user', 'content': content})
+class ChatRequest(BaseModel):
+    input: str
 
-    response = client.chat.completions.create(
-        model='gpt-4o-mini',
-        messages=message
-    )
+class ChatResponse(BaseModel):
+    response: str
 
-    chat_response = response.choices[0].message.content
-    print(f'ChatGPT : {chat_response}')
-    message.append({'role': 'assistant', 'content': chat_response})
+@app.post("/chat", response_model=ChatResponse)
+def chat_endpoint(req: ChatRequest):
+    """
+    POST /chat
+    Request JSON: { "input": "사용자 입력 문자열" }
+    Returns assistant response using LangChain conversation chain.
+    """
+    try:
+        reply = conversation.predict(input=req.input)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return ChatResponse(response=reply)
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint"""
+    return {"status": "ok"}
