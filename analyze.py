@@ -179,15 +179,6 @@ def evaluate_pronunciation_with_llm(target_sentence, user_transcript):
 async def root():
     return {"message": "의사소통 보조 AI 유음"}
 
-PRACTICE_SENTENCES = ["바나나", "토끼", "사과", "피자", "하마", "자동차", "우유", "학교", "라디오", "감자"]
-
-
-@app.get("/practice-sentence")
-async def get_practice_sentence():
-    """발음 교정 학습을 위한 단어를 랜덤으로 반환합니다."""
-    chosen_sentence = random.choice(PRACTICE_SENTENCES)
-    return JSONResponse(content={"sentence": chosen_sentence})
-
 
 @app.post("/analyze")
 async def analyze_pronunciation(target_sentence: str = Form(...), audio_file: UploadFile = File(...)):
