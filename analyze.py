@@ -1,10 +1,8 @@
-import torch
 import os
 import shutil
 import numpy as np
 import noisereduce as nr
 import datetime
-import random
 import json
 from openai import OpenAI
 import soundfile as sf
