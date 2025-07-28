@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+openai
+pydub
+numpy
+soundfile
+noisereduce
+scipy
